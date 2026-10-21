@@ -12,6 +12,35 @@ export interface User {
     external_id?: string;
 }
 
+/** Données publiques d'un utilisateur, renvoyées par /api/users */
+export interface PublicUser {
+    user_id: number;
+    username: string;
+    last_login: string | null;
+}
+
+export interface Room {
+    room_id: number;
+    name: string;
+    created_on: string;
+}
+
+export interface Message {
+    id: string;
+    senderId: number;
+    senderName: string;
+    content: string;
+    image: string | null;
+    timestamp: number;
+}
+
+export type ConversationType = "user" | "room";
+
+export interface Conversation {
+    type: ConversationType;
+    id: number;
+}
+
 export interface Session {
     token: string;
     username?: string;
@@ -33,3 +62,6 @@ export interface ErrorCallback {
     (error: CustomError): void;
 }
 
+export function conversationKey(conversation: Conversation): string {
+    return conversation.type + ":" + conversation.id;
+}

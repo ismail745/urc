@@ -1,42 +1,51 @@
-import {React, useState} from "react";
+import {useState} from "react";
+import type {FormEvent} from "react";
+import {Link as RouterLink, Navigate, useLocation, useNavigate} from "react-router-dom";
+import {Alert, Box, Button, Link, TextField, Typography} from "@mui/material";
 import {loginUser} from "./loginApi";
-import type {Session} from "../model/common";
-import {CustomError} from "../model/CustomError";
+import {useChatStore} from "../store/chatStore";
+import {AuthLayout} from "../components/AuthLayout";
+import type {CustomError} from "../model/CustomError";
 
 export function Login() {
+    const session = useChatStore(state => state.session);
+    const setSession = useChatStore(state => state.setSession);
+    const navigate = useNavigate();
+    const location = useLocation();
+    const from = (location.state as { from?: string } | null)?.from || "/messages";
 
-    const [error, setError] = useState({} as CustomError);
-    const [session, setSession] = useState({} as Session);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    if (session) {
+        return <Navigate to={from} replace/>;
+    }
+
+    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        const form = event.currentTarget;
-        const data = new FormData(form);
-        loginUser({user_id: -1, username:  data.get('login') as string, password: data.get('password') as string},
-            (result: Session) => {
-                console.log(result);
+        const data = new FormData(event.currentTarget);
+        setLoading(true);
+        setError(null);
+        loginUser(data.get("login") as string, data.get("password") as string)
+            .then(result => {
                 setSession(result);
-                form.reset();
-                setError(new CustomError(""));
-            }, (loginError: CustomError) => {
-                console.log(loginError);
-                setError(loginError);
-                setSession({} as Session);
-            });
+                navigate(from, {replace: true});
+            })
+            .catch((loginError: CustomError) => setError(loginError.message))
+            .finally(() => setLoading(false));
     };
 
-    return(<>
-        <form onSubmit={handleSubmit}>
-            <input name="login" placeholder="login"/><br/>
-            <input name="password" placeholder="password"/><br/>
-            <button type="submit">connexion</button>
-        </form>
-            { session.token &&
-                <span>{session.username} : {session.token}</span>
-            }
-            { error.message &&
-                <span>{error.message}</span>
-            }
-        </>
+    return (
+        <AuthLayout title="Connexion">
+            <Box component="form" onSubmit={handleSubmit} sx={{display: "flex", flexDirection: "column", gap: 2}}>
+                <TextField name="login" label="Identifiant" required autoFocus autoComplete="username"/>
+                <TextField name="password" label="Mot de passe" type="password" required autoComplete="current-password"/>
+                {error && <Alert severity="error">{error}</Alert>}
+                <Button type="submit" variant="contained" size="large" loading={loading}>Se connecter</Button>
+                <Typography variant="body2" sx={{textAlign: "center"}}>
+                    Pas encore de compte ? <Link component={RouterLink} to="/register">Créer un compte</Link>
+                </Typography>
+            </Box>
+        </AuthLayout>
     );
 }

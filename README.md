@@ -334,6 +334,34 @@ Sky is the limit !
 
 
 
+## Réalisation
+
+### Fonctionnalités implémentées
+
+- Store **Zustand** ([src/store/chatStore.ts](src/store/chatStore.ts)), **React Router**, interface **MUI**
+- Connexion, inscription (avec connexion automatique) et déconnexion ([api/register.js](api/register.js), [api/logout.js](api/logout.js))
+- Token de session envoyé en `Authorization: Bearer` sur chaque appel ([src/api/http.ts](src/api/http.ts)), retour à la page de connexion en cas de 401
+- Liste des utilisateurs et des salons, conversation sélectionnée portée par l'URL (`/messages/user/{id}`, `/messages/room/{id}`)
+- Envoi et lecture des messages stockés dans Redis pendant 24h ([api/message.js](api/message.js), [api/messages.js](api/messages.js))
+- Notifications push Pusher Beams avec deep link, écoute du service worker pour rafraîchir la conversation affichée
+  (sans Pusher configuré, la conversation est rafraîchie toutes les 5s)
+- Salons de discussion avec notification de tous les membres, et création dynamique de salons ([api/rooms.js](api/rooms.js))
+- Envoi d'images / GIF via Vercel Blob ([api/upload.js](api/upload.js))
+- Compteur de messages non lus, auto-scroll, affichage responsive
+
+### Variables d'environnement
+
+En plus des variables Neon et Upstash, à déclarer sur Vercel puis à récupérer avec `vercel env pull` :
+
+| Variable | Usage |
+|---|---|
+| `PUSHER_INSTANCE_ID` | Instance Pusher Beams (services `beams.js` et `message.js`) |
+| `PUSHER_SECRET_KEY` | Clé secrète Pusher Beams |
+| `VITE_PUSHER_INSTANCE_ID` | Instance Pusher Beams côté navigateur (même valeur que `PUSHER_INSTANCE_ID`) |
+| `BLOB_READ_WRITE_TOKEN` | Créé automatiquement en connectant un store **Blob** au projet |
+
+<p>&nbsp;</p>
+
 ## Notes
 
 <a id="mdp"></a>
