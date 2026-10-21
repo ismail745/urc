@@ -93,6 +93,17 @@ export function MessagesPage() {
         return () => sw.removeEventListener("message", onMessage);
     }, []);
 
+    const enablePush = async () => {
+        if (!session) {
+            return;
+        }
+        if ("Notification" in window && window.Notification.permission === "denied") {
+            alert("Les notifications sont bloquées pour ce site : autorisez-les dans les paramètres du navigateur (icône à gauche de l'adresse), puis rechargez la page.");
+            return;
+        }
+        useChatStore.getState().setPushEnabled(await startPush(session));
+    };
+
     const logout = async () => {
         try {
             await logoutUser();
@@ -110,8 +121,11 @@ export function MessagesPage() {
                 <Toolbar variant="dense" sx={{gap: 1}}>
                     <ForumIcon/>
                     <Typography variant="h6" sx={{flex: 1}} noWrap>UBO Relay Chat</Typography>
-                    <Tooltip title={pushEnabled ? "Notifications activées" : "Notifications désactivées (rafraîchissement automatique)"}>
-                        {pushEnabled ? <NotificationsActiveIcon/> : <NotificationsOffIcon sx={{opacity: 0.7}}/>}
+                    <Tooltip title={pushEnabled ? "Notifications activées" : "Activer les notifications"}>
+                        {/* Le clic fournit le geste utilisateur exigé par certains navigateurs pour demander l'autorisation */}
+                        <IconButton color="inherit" onClick={enablePush} aria-label="Notifications">
+                            {pushEnabled ? <NotificationsActiveIcon/> : <NotificationsOffIcon sx={{opacity: 0.7}}/>}
+                        </IconButton>
                     </Tooltip>
                     <Avatar sx={{width: 30, height: 30, fontSize: 14, bgcolor: colorFromName(session?.username || "?")}}>
                         {(session?.username || "?").charAt(0).toUpperCase()}
