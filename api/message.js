@@ -1,11 +1,15 @@
-import { sql } from "@vercel/postgres";
+import { neon } from "@neondatabase/serverless";
 import { Redis } from '@upstash/redis';
 import {getConnecterUser, triggerNotConnected} from "../lib/session.js";
 import {conversationKey, isValidType, MESSAGE_TTL} from "../lib/conversation.js";
 
-import PushNotifications from "@pusher/push-notifications-server";
+import * as PusherServer from "@pusher/push-notifications-server";
+
+// Compatible ESM (vercel dev) et CommonJS (build Vercel)
+const PushNotifications = PusherServer.default || PusherServer;
 
 const redis = Redis.fromEnv();
+const sql = neon(process.env.POSTGRES_URL);
 
 function getBaseUrl(request) {
     const proto = request.headers["x-forwarded-proto"] || "https";
@@ -65,7 +69,7 @@ export default async (request, response) => {
         let title;
         let deepLinkPath;
         if (type === "user") {
-            const {rows} = await sql`select external_id from users where user_id = ${targetId}`;
+            const rows = await sql`select external_id from users where user_id = ${targetId}`;
             if (rows.length === 0) {
                 response.status(404).json({code: "NOT_FOUND", message: "Utilisateur inconnu"});
                 return;
@@ -75,12 +79,12 @@ export default async (request, response) => {
             // Côté destinataire, la conversation est celle avec l'émetteur
             deepLinkPath = "/messages/user/" + user.id;
         } else {
-            const {rows: rooms} = await sql`select name from rooms where room_id = ${targetId}`;
+            const rooms = await sql`select name from rooms where room_id = ${targetId}`;
             if (rooms.length === 0) {
                 response.status(404).json({code: "NOT_FOUND", message: "Salon inconnu"});
                 return;
             }
-            const {rows} = await sql`select external_id from users where user_id <> ${user.id}`;
+            const rows = await sql`select external_id from users where user_id <> ${user.id}`;
             recipients = rows.map(row => row.external_id);
             title = user.username + " @ " + rooms[0].name;
             deepLinkPath = "/messages/room/" + targetId;

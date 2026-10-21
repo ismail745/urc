@@ -1,6 +1,9 @@
 import {getConnecterUser, triggerNotConnected} from "../lib/session.js";
 
-import PushNotifications from "@pusher/push-notifications-server";
+import * as PusherServer from "@pusher/push-notifications-server";
+
+// Compatible ESM (vercel dev) et CommonJS (build Vercel)
+const PushNotifications = PusherServer.default || PusherServer;
 
 
 export default async (req, res) => {
