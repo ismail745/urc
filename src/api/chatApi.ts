@@ -1,4 +1,4 @@
-import {apiFetch} from "./http";
+import {apiFetch, apiFetchBlob} from "./http";
 import type {Conversation, Message, PublicUser, Room} from "../model/common";
 
 export function fetchUsers() {
@@ -30,4 +30,8 @@ export function uploadImage(file: File) {
         headers: {"Content-Type": file.type, "x-filename": file.name},
         body: file,
     });
+}
+
+export function fetchImage(path: string) {
+    return apiFetchBlob("/api/image?path=" + encodeURIComponent(path));
 }

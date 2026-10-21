@@ -22,7 +22,7 @@ async function toError(response: Response): Promise<CustomError> {
  * Appel d'un service API avec le token de session en header Authorization.
  * En cas de 401, la session est expirée : on la supprime, ce qui renvoie vers la page de connexion.
  */
-export async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
+async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
     const session = useChatStore.getState().session;
     const headers = new Headers(options.headers);
     if (session) {
@@ -39,5 +39,14 @@ export async function apiFetch<T>(url: string, options: RequestInit = {}): Promi
     if (!response.ok) {
         throw await toError(response);
     }
-    return await response.json() as T;
+    return response;
+}
+
+export async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
+    return await (await authFetch(url, options)).json() as T;
+}
+
+/** Téléchargement d'un fichier (ex : image privée) avec le token de session */
+export async function apiFetchBlob(url: string): Promise<Blob> {
+    return await (await authFetch(url)).blob();
 }

@@ -1,7 +1,8 @@
 import {useEffect, useRef} from "react";
-import {Avatar, Box, Link, Paper, Typography} from "@mui/material";
+import {Avatar, Box, Paper, Typography} from "@mui/material";
 import type {Message} from "../model/common";
 import {colorFromName} from "../theme";
+import {AuthImage} from "./AuthImage";
 
 const dateFormat = new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
@@ -54,12 +55,7 @@ export function MessageList({messages, currentUserId}: { messages: Message[], cu
                                 whiteSpace: "pre-wrap",
                                 wordBreak: "break-word",
                             }}>
-                                {message.image && (
-                                    <Link href={message.image} target="_blank" rel="noopener noreferrer">
-                                        <Box component="img" src={message.image} alt="image"
-                                             sx={{display: "block", maxWidth: "100%", maxHeight: 260, borderRadius: 2, mb: message.content ? 1 : 0}}/>
-                                    </Link>
-                                )}
+                                {message.image && <AuthImage path={message.image} spaced={!!message.content}/>}
                                 {message.content}
                             </Paper>
                         </Box>

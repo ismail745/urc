@@ -346,7 +346,7 @@ Sky is the limit !
 - Notifications push Pusher Beams avec deep link, écoute du service worker pour rafraîchir la conversation affichée
   (sans Pusher configuré, la conversation est rafraîchie toutes les 5s)
 - Salons de discussion avec notification de tous les membres, et création dynamique de salons ([api/rooms.js](api/rooms.js))
-- Envoi d'images / GIF via Vercel Blob ([api/upload.js](api/upload.js))
+- Envoi d'images / GIF via un store Vercel Blob privé ([api/upload.js](api/upload.js)), lues par les seuls utilisateurs connectés via [api/image.js](api/image.js)
 - Compteur de messages non lus, auto-scroll, affichage responsive
 
 ### Variables d'environnement
@@ -358,7 +358,7 @@ En plus des variables Neon et Upstash, à déclarer sur Vercel puis à récupér
 | `PUSHER_INSTANCE_ID` | Instance Pusher Beams (services `beams.js` et `message.js`) |
 | `PUSHER_SECRET_KEY` | Clé secrète Pusher Beams |
 | `VITE_PUSHER_INSTANCE_ID` | Instance Pusher Beams côté navigateur (même valeur que `PUSHER_INSTANCE_ID`) |
-| `BLOB_READ_WRITE_TOKEN` | Créé automatiquement en connectant un store **Blob** au projet |
+| `BLOB_STORE_ID` | Créé automatiquement en connectant un store **Blob** (privé) au projet ; l'authentification se fait via `VERCEL_OIDC_TOKEN` |
 
 <p>&nbsp;</p>
 

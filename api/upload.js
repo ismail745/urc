@@ -10,6 +10,7 @@ const MAX_SIZE = 4 * 1024 * 1024;
 /**
  * Upload d'une image sur Vercel Blob : POST /api/upload
  * Le corps de la requête contient directement le fichier, le nom est passé dans le header x-filename.
+ * Le store est privé : on renvoie le chemin du blob, l'image est ensuite servie par /api/image.
  */
 export default async function handler(request) {
     try {
@@ -29,10 +30,10 @@ export default async function handler(request) {
 
         const filename = (request.headers.get("x-filename") || "image").replace(/[^a-zA-Z0-9._-]/g, "_");
         const blob = await put("images/" + crypto.randomUUID() + "-" + filename, request.body, {
-            access: 'public',
+            access: 'private',
             contentType: contentType,
         });
-        return jsonResponse({url: blob.url});
+        return jsonResponse({url: blob.pathname});
     } catch (error) {
         console.log(error);
         return jsonResponse({code: "SERVER_ERROR", message: "Erreur lors de l'upload"}, 500);
