@@ -24,7 +24,13 @@ export async function POST(request) {
             return jsonResponse({code: "BAD_REQUEST", message: "Image trop volumineuse (4 Mo max)"}, 413);
         }
 
-        const filename = (request.headers.get("x-filename") || "image").replace(/[^a-zA-Z0-9._-]/g, "_");
+        let filename = request.headers.get("x-filename") || "image";
+        try {
+            filename = decodeURIComponent(filename);
+        } catch {
+            // nom mal encodé : on garde la valeur brute
+        }
+        filename = filename.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
         const blob = await put("images/" + crypto.randomUUID() + "-" + filename, request.body, {
             access: 'private',
             contentType: contentType,

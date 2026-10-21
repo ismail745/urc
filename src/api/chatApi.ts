@@ -27,7 +27,8 @@ export function sendMessage(conversation: Conversation, content: string, image?:
 export function uploadImage(file: File) {
     return apiFetch<{ url: string }>("/api/upload", {
         method: "POST",
-        headers: {"Content-Type": file.type, "x-filename": file.name},
+        // Les headers HTTP n'acceptent que l'ASCII : le nom du fichier est encodé
+        headers: {"Content-Type": file.type, "x-filename": encodeURIComponent(file.name)},
         body: file,
     });
 }
