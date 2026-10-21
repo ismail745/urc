@@ -1,15 +1,11 @@
 import { get } from '@vercel/blob';
-import {getConnecterUser, jsonResponse, unauthorizedResponse} from "../lib/session";
-
-export const config = {
-    runtime: 'edge',
-};
+import {getConnecterUser, jsonResponse, unauthorizedResponse} from "../lib/session.js";
 
 /**
  * Lecture d'une image du store Blob privé : GET /api/image?path=images/xxx
  * Seuls les utilisateurs connectés peuvent y accéder.
  */
-export default async function handler(request) {
+export async function GET(request) {
     try {
         const user = await getConnecterUser(request);
         if (!user) {

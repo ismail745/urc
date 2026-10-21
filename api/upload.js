@@ -1,9 +1,5 @@
 import { put } from '@vercel/blob';
-import {getConnecterUser, jsonResponse, unauthorizedResponse} from "../lib/session";
-
-export const config = {
-    runtime: 'edge',
-};
+import {getConnecterUser, jsonResponse, unauthorizedResponse} from "../lib/session.js";
 
 const MAX_SIZE = 4 * 1024 * 1024;
 
@@ -12,7 +8,7 @@ const MAX_SIZE = 4 * 1024 * 1024;
  * Le corps de la requête contient directement le fichier, le nom est passé dans le header x-filename.
  * Le store est privé : on renvoie le chemin du blob, l'image est ensuite servie par /api/image.
  */
-export default async function handler(request) {
+export async function POST(request) {
     try {
         const user = await getConnecterUser(request);
         if (!user) {
