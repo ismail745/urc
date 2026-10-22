@@ -6,6 +6,7 @@ import {useChatStore} from "../store/chatStore";
 import {conversationKey, REACTIONS} from "../model/common";
 import type {Conversation, Message, Reactions} from "../model/common";
 import {AuthImage} from "./AuthImage";
+import {AudioMessage} from "./AudioMessage";
 import {UserAvatar} from "./UserAvatar";
 
 const dateFormat = new Intl.DateTimeFormat("fr-FR", {
@@ -112,6 +113,7 @@ export function MessageList({messages, conversation, currentUserId}: MessageList
                                 wordBreak: "break-word",
                             }}>
                                 {message.image && <AuthImage path={message.image} spaced={!!message.content}/>}
+                                {message.audio && <AudioMessage path={message.audio} duration={message.duration} mine={mine}/>}
                                 {message.content}
                             </Paper>
                             {reactions.length > 0 && (

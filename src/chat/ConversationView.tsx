@@ -1,5 +1,7 @@
 import {useCallback, useEffect, useState} from "react";
-import {Alert, Avatar, Box, CircularProgress, IconButton, Toolbar, Typography} from "@mui/material";
+import {Alert, Avatar, Box, CircularProgress, IconButton, Toolbar, Tooltip, Typography} from "@mui/material";
+import CallIcon from "@mui/icons-material/Call";
+import VideocamIcon from "@mui/icons-material/Videocam";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TagIcon from "@mui/icons-material/Tag";
 import {useNavigate} from "react-router-dom";
@@ -9,6 +11,7 @@ import {conversationKey} from "../model/common";
 import type {Conversation, Message} from "../model/common";
 import type {CustomError} from "../model/CustomError";
 import {presenceLabel, UserAvatar} from "./UserAvatar";
+import {call} from "../call/callManager";
 import {MessageList} from "./MessageList";
 import {MessageInput} from "./MessageInput";
 
@@ -69,6 +72,20 @@ export function ConversationView({conversation}: { conversation: Conversation })
                         </Typography>
                     )}
                 </Box>
+                {user && user.user_id !== session?.id && (
+                    <Box sx={{ml: "auto", display: "flex"}}>
+                        <Tooltip title="Appel vidéo">
+                            <IconButton onClick={() => call({id: user.user_id, name: user.username}, true)} aria-label="Appel vidéo">
+                                <VideocamIcon/>
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Appel audio">
+                            <IconButton onClick={() => call({id: user.user_id, name: user.username}, false)} aria-label="Appel audio">
+                                <CallIcon/>
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
+                )}
             </Toolbar>
             {error && <Alert severity="error" sx={{m: 1}}>{error}</Alert>}
             {loading && messages.length === 0

@@ -4,6 +4,7 @@ import {fetchMessages, fetchUsers, sync} from "../api/chatApi";
 import {useChatStore} from "../store/chatStore";
 import {conversationKey} from "../model/common";
 import type {Conversation, InboxEntry, SyncState} from "../model/common";
+import {receive} from "../call/callManager";
 
 const VISIBLE_INTERVAL = 5000;
 const HIDDEN_INTERVAL = 15000;
@@ -77,6 +78,9 @@ export function useSync() {
         const apply = (result: SyncState) => {
             const state = useChatStore.getState();
             state.setPresence(result.online, result.lastSeen);
+            if (result.incomingCall) {
+                receive(result.incomingCall);
+            }
 
             if (usersRev !== null && result.usersRev !== usersRev) {
                 fetchUsers().then(state.setUsers).catch(console.error);

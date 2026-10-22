@@ -1,48 +1,16 @@
 import { neon } from "@neondatabase/serverless";
 import { Redis } from '@upstash/redis';
 import {getConnecterUser, triggerNotConnected} from "../lib/session.js";
-import {activityTarget, conversationKey, isValidType, MESSAGE_TTL} from "../lib/conversation.js";
+import {activityTarget, conversationKey, isValidBlobPath, isValidType, MESSAGE_TTL} from "../lib/conversation.js";
 
-import * as PusherServer from "@pusher/push-notifications-server";
-
-// Compatible ESM (vercel dev) et CommonJS (build Vercel)
-const PushNotifications = PusherServer.default || PusherServer;
+import {getBaseUrl, sendPush} from "../lib/push.js";
 
 const redis = Redis.fromEnv();
 const sql = neon(process.env.POSTGRES_URL);
 
-function getBaseUrl(request) {
-    const proto = request.headers["x-forwarded-proto"] || "https";
-    return proto + "://" + request.headers.host;
-}
-
-async function sendPush(externalIds, notification, data) {
-    if (!process.env.PUSHER_INSTANCE_ID || !process.env.PUSHER_SECRET_KEY || externalIds.length === 0) {
-        return;
-    }
-    const beamsClient = new PushNotifications({
-        instanceId: process.env.PUSHER_INSTANCE_ID,
-        secretKey: process.env.PUSHER_SECRET_KEY,
-    });
-    try {
-        // publishToUsers est limité à 1000 utilisateurs par appel
-        for (let i = 0; i < externalIds.length; i += 1000) {
-            await beamsClient.publishToUsers(externalIds.slice(i, i + 1000), {
-                web: {
-                    notification: notification,
-                    data: data,
-                },
-            });
-        }
-    } catch (error) {
-        // Une erreur de notification ne doit pas faire échouer l'envoi du message
-        console.log("Push error", error);
-    }
-}
-
 /**
  * Envoi d'un message : POST /api/message
- * body : {type: "user"|"room", targetId: number, content: string, image?: string}
+ * body : {type: "user"|"room", targetId: number, content: string, image?: string, audio?: string, duration?: number}
  */
 export default async (request, response) => {
     try {
@@ -53,9 +21,10 @@ export default async (request, response) => {
             return;
         }
 
-        const {type, targetId, content, image} = await request.body;
+        const {type, targetId, content, image, audio, duration} = await request.body;
         const text = (content || "").trim();
-        if (!isValidType(type) || !targetId || (!text && !image)) {
+        if (!isValidType(type) || !targetId || (!text && !image && !audio)
+            || (image && !isValidBlobPath(image, "images/")) || (audio && !isValidBlobPath(audio, "audio/"))) {
             response.status(400).json({code: "BAD_REQUEST", message: "Message invalide"});
             return;
         }
@@ -96,6 +65,8 @@ export default async (request, response) => {
             senderName: user.username,
             content: text,
             image: image || null,
+            audio: audio || null,
+            duration: audio && Number.isFinite(duration) ? Math.round(duration) : null,
             timestamp: Date.now(),
         };
 
@@ -103,7 +74,7 @@ export default async (request, response) => {
         await redis.lpush(key, message);
         await redis.expire(key, MESSAGE_TTL);
 
-        const body = text || "📷 Image";
+        const body = text || (audio ? "🎤 Message vocal" : "📷 Image");
         // Boîte de réception du destinataire : permet aux onglets ouverts de détecter le message
         // même si la notification push n'arrive pas (navigateur sans Web Push, réseau filtré...)
         if (recipients.length > 0) {

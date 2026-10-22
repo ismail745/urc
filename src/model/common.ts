@@ -32,6 +32,9 @@ export interface Message {
     senderName: string;
     content: string;
     image: string | null;
+    /** Message vocal : chemin du fichier et durée en secondes */
+    audio?: string | null;
+    duration?: number | null;
     timestamp: number;
     /** Réactions : emoji -> identifiants des utilisateurs */
     reactions?: Reactions;
@@ -57,6 +60,33 @@ export interface SyncState {
     /** Clé de conversation ("user:3", "room:1") -> dernière modification et dernier message reçu */
     activity: Record<string, { rev: number, last?: InboxEntry }>;
     usersRev: number;
+    incomingCall: IncomingCall | null;
+}
+
+export interface CallParty {
+    id: number;
+    name: string;
+}
+
+export type CallStatus = "ringing" | "accepted" | "rejected" | "missed" | "ended";
+
+/** Appel audio / vidéo, tel que stocké par /api/call */
+export interface Call {
+    id: string;
+    from: CallParty;
+    to: CallParty;
+    video: boolean;
+    status: CallStatus;
+    offer?: string;
+    answer?: string | null;
+    createdAt: number;
+}
+
+export interface IncomingCall {
+    id: string;
+    from: CallParty;
+    video: boolean;
+    createdAt: number;
 }
 
 export type ConversationType = "user" | "room";

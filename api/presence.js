@@ -17,6 +17,7 @@ const redis = Redis.fromEnv();
  * - lastSeen : date de dernière activité par utilisateur
  * - activity : pour chaque conversation, date de dernière modification et dernier message reçu
  * - usersRev : version de la liste des utilisateurs
+ * - incomingCall : appel entrant en train de sonner, ou null
  */
 export default async function handler(request) {
     try {
@@ -38,8 +39,17 @@ export default async function handler(request) {
         pipeline.hgetall("rev:" + user.id);
         pipeline.hgetall("rev:rooms");
         pipeline.get(USERS_REV_KEY);
+        pipeline.get("calls:user:" + user.id);
         const results = await pipeline.exec();
-        const [presence, inbox, roomsInbox, rev, roomsRev, usersRev] = active ? results.slice(1) : results;
+        const [presence, inbox, roomsInbox, rev, roomsRev, usersRev, callId] = active ? results.slice(1) : results;
+
+        let incomingCall = null;
+        if (callId) {
+            const call = await redis.get("call:" + callId);
+            if (call && call.status === "ringing" && call.to.id === Number(user.id)) {
+                incomingCall = {id: call.id, from: call.from, video: call.video, createdAt: call.createdAt};
+            }
+        }
 
         const lastSeen = {};
         const online = [];
@@ -60,7 +70,7 @@ export default async function handler(request) {
             activity[key] = {rev: Math.max(activity[key]?.rev || 0, last.timestamp), last};
         });
 
-        return jsonResponse({online, lastSeen, activity, usersRev: Number(usersRev || 0)});
+        return jsonResponse({online, lastSeen, activity, usersRev: Number(usersRev || 0), incomingCall});
     } catch (error) {
         console.log(error);
         return jsonResponse({code: "SERVER_ERROR", message: "Erreur lors de la synchronisation"}, 500);

@@ -24,7 +24,7 @@ PusherPushNotifications.onNotificationReceived = ({
 
   pushEvent.waitUntil(windowClients().then((clients) => {
     // Prévient les onglets ouverts : ils mettent à jour la conversation et les non-lus
-    clients.forEach(client => client.postMessage({kind: "push", ...payload.data}));
+    clients.forEach(client => client.postMessage({...payload.data, kind: "push"}));
 
     // Inutile d'afficher la notification si la conversation est déjà affichée au premier plan
     const path = new URL(url, self.location.origin).pathname;

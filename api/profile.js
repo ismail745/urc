@@ -3,7 +3,7 @@ import { Redis } from '@upstash/redis';
 import { del } from '@vercel/blob';
 import {getConnecterUser, getToken, jsonResponse, unauthorizedResponse} from "../lib/session.js";
 import {arrayBufferToBase64, stringToArrayBuffer} from "../lib/base64.js";
-import {conversationKey, PRESENCE_KEY, USERS_REV_KEY} from "../lib/conversation.js";
+import {conversationKey, isValidBlobPath, PRESENCE_KEY, USERS_REV_KEY} from "../lib/conversation.js";
 
 import * as PusherServer from "@pusher/push-notifications-server";
 
@@ -12,10 +12,6 @@ const PushNotifications = PusherServer.default || PusherServer;
 
 const redis = Redis.fromEnv();
 const sql = neon(process.env.POSTGRES_URL);
-
-function isValidImagePath(path) {
-    return typeof path === "string" && path.startsWith("images/") && !path.includes("..") && path.length <= 255;
-}
 
 /** Supprime une image du store Blob, sans faire échouer la requête en cas d'erreur */
 async function deleteBlob(path) {
@@ -41,7 +37,7 @@ export async function PUT(request) {
         }
 
         const {avatar} = await request.json();
-        if (avatar !== null && !isValidImagePath(avatar)) {
+        if (avatar !== null && !isValidBlobPath(avatar, "images/")) {
             return jsonResponse({code: "BAD_REQUEST", message: "Image invalide"}, 400);
         }
 

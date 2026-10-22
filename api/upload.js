@@ -4,7 +4,7 @@ import {getConnecterUser, jsonResponse, unauthorizedResponse} from "../lib/sessi
 const MAX_SIZE = 4 * 1024 * 1024;
 
 /**
- * Upload d'une image sur Vercel Blob : POST /api/upload
+ * Upload d'une image ou d'un message vocal sur Vercel Blob : POST /api/upload
  * Le corps de la requête contient directement le fichier, le nom est passé dans le header x-filename.
  * Le store est privé : on renvoie le chemin du blob, l'image est ensuite servie par /api/image.
  */
@@ -16,22 +16,23 @@ export async function POST(request) {
         }
 
         const contentType = request.headers.get("content-type") || "";
-        if (!contentType.startsWith("image/")) {
-            return jsonResponse({code: "BAD_REQUEST", message: "Seules les images sont acceptées"}, 400);
+        const folder = contentType.startsWith("image/") ? "images/" : contentType.startsWith("audio/") ? "audio/" : null;
+        if (!folder) {
+            return jsonResponse({code: "BAD_REQUEST", message: "Seuls les images et les messages vocaux sont acceptés"}, 400);
         }
         const length = Number(request.headers.get("content-length") || 0);
         if (length > MAX_SIZE) {
-            return jsonResponse({code: "BAD_REQUEST", message: "Image trop volumineuse (4 Mo max)"}, 413);
+            return jsonResponse({code: "BAD_REQUEST", message: "Fichier trop volumineux (4 Mo max)"}, 413);
         }
 
-        let filename = request.headers.get("x-filename") || "image";
+        let filename = request.headers.get("x-filename") || "fichier";
         try {
             filename = decodeURIComponent(filename);
         } catch {
             // nom mal encodé : on garde la valeur brute
         }
         filename = filename.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
-        const blob = await put("images/" + crypto.randomUUID() + "-" + filename, request.body, {
+        const blob = await put(folder + crypto.randomUUID() + "-" + filename, request.body, {
             access: 'private',
             contentType: contentType,
         });

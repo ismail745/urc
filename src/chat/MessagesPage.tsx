@@ -18,6 +18,7 @@ import {ConversationList} from "./ConversationList";
 import {ConversationView} from "./ConversationView";
 import {UserAvatar} from "./UserAvatar";
 import {useSync} from "./useSync";
+import {CallOverlay} from "../call/CallOverlay";
 
 function parseConversation(type?: string, id?: string): Conversation | null {
     const numericId = Number(id);
@@ -149,6 +150,7 @@ export function MessagesPage() {
                         )}
                 </Paper>
             </Box>
+            <CallOverlay/>
             <ProfileDialog open={profileOpen} onClose={() => setProfileOpen(false)} onDeleted={leave}/>
         </Box>
     );
