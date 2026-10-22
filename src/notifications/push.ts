@@ -4,21 +4,29 @@ import type {Session} from "../model/common";
 
 let beamsClient: Client | null = null;
 
+export interface PushResult {
+    enabled: boolean;
+    error: string | null;
+}
+
 /**
  * Active les notifications push Pusher Beams pour l'utilisateur connecté.
- * Renvoie false si les notifications ne sont pas disponibles (pas de config, permission refusée, navigateur non supporté).
+ * askPermission : demande l'autorisation à l'utilisateur. Chrome bloque (ou affiche discrètement) les demandes
+ * faites sans action de l'utilisateur : on ne la demande donc qu'au clic sur la cloche.
  */
-export async function startPush(session: Session): Promise<boolean> {
-    const instanceId = import.meta.env.VITE_PUSHER_INSTANCE_ID as string | undefined;
-    if (!instanceId || !("serviceWorker" in navigator) || !("Notification" in window)) {
-        console.log("Push notifications indisponibles");
-        return false;
+export async function startPush(session: Session, askPermission: boolean): Promise<PushResult> {
+    if (!("serviceWorker" in navigator) || !("Notification" in window)) {
+        return {enabled: false, error: "Ce navigateur ne gère pas les notifications"};
     }
 
-    const permission = await window.Notification.requestPermission();
+    const permission = askPermission ? await window.Notification.requestPermission() : window.Notification.permission;
     if (permission !== "granted") {
-        console.log("Permission de notification refusée");
-        return false;
+        return {enabled: false, error: permission === "denied" ? "Notifications bloquées pour ce site" : null};
+    }
+
+    const instanceId = import.meta.env.VITE_PUSHER_INSTANCE_ID as string | undefined;
+    if (!instanceId) {
+        return {enabled: false, error: "Push non configuré (VITE_PUSHER_INSTANCE_ID)"};
     }
 
     try {
@@ -38,10 +46,12 @@ export async function startPush(session: Session): Promise<boolean> {
         }
         await beamsClient.setUserId(session.externalId, tokenProvider);
         console.log("Push id : " + await beamsClient.getDeviceId());
-        return true;
+        return {enabled: true, error: null};
     } catch (error) {
+        // Ex. sous Chrome : "Registration failed - push service error" si le service push de Google
+        // est inaccessible (réseau filtré, Chromium sans clés Google...)
         console.error(error);
-        return false;
+        return {enabled: false, error: error instanceof Error ? error.message : String(error)};
     }
 }
 

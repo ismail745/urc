@@ -1,7 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { Redis } from '@upstash/redis';
 import {getConnecterUser, triggerNotConnected} from "../lib/session.js";
-import {conversationKey, isValidType, MESSAGE_TTL} from "../lib/conversation.js";
+import {activityTarget, conversationKey, isValidType, MESSAGE_TTL} from "../lib/conversation.js";
 
 import * as PusherServer from "@pusher/push-notifications-server";
 
@@ -103,16 +103,28 @@ export default async (request, response) => {
         await redis.lpush(key, message);
         await redis.expire(key, MESSAGE_TTL);
 
+        const body = text || "📷 Image";
+        // Boîte de réception du destinataire : permet aux onglets ouverts de détecter le message
+        // même si la notification push n'arrive pas (navigateur sans Web Push, réseau filtré...)
+        if (recipients.length > 0) {
+            const target = activityTarget(type, user.id, targetId);
+            await redis.pipeline()
+                .hset("inbox:" + target.suffix, {[target.field]: {id: message.id, senderId: user.id, title, body, timestamp: message.timestamp}})
+                .hset("rev:" + target.suffix, {[target.field]: message.timestamp})
+                .exec();
+        }
+
         await sendPush(recipients, {
             title: title,
-            body: text || "📷 Image",
-            ico: "https://www.univ-brest.fr/themes/custom/ubo_parent/favicon.ico",
+            body: body,
+            icon: getBaseUrl(request) + "/logo192.png",
             deep_link: getBaseUrl(request) + deepLinkPath,
         }, {
             type: type,
             // identifiant de la conversation vu par le destinataire
             conversationId: type === "user" ? String(user.id) : String(targetId),
             senderId: String(user.id),
+            messageId: message.id,
         });
 
         response.status(200).json(message);

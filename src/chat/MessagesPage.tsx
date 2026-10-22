@@ -1,26 +1,23 @@
-import {useEffect, useMemo} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {useNavigate, useParams} from "react-router-dom";
 import {
-    AppBar, Avatar, Box, IconButton, Paper, Toolbar, Tooltip, Typography
+    AppBar, Box, ButtonBase, IconButton, Paper, Toolbar, Tooltip, Typography
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import ForumIcon from "@mui/icons-material/Forum";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 import {useChatStore} from "../store/chatStore";
-import {fetchMessages, fetchRooms, fetchUsers} from "../api/chatApi";
+import {fetchRooms, fetchUsers} from "../api/chatApi";
 import {logoutUser} from "../user/loginApi";
 import {startPush, stopPush} from "../notifications/push";
 import {conversationKey} from "../model/common";
 import type {Conversation} from "../model/common";
-import {colorFromName} from "../theme";
+import {ProfileDialog} from "../user/ProfileDialog";
 import {ConversationList} from "./ConversationList";
 import {ConversationView} from "./ConversationView";
-
-interface PushData {
-    type?: string;
-    conversationId?: string;
-}
+import {UserAvatar} from "./UserAvatar";
+import {useSync} from "./useSync";
 
 function parseConversation(type?: string, id?: string): Conversation | null {
     const numericId = Number(id);
@@ -36,7 +33,12 @@ export function MessagesPage() {
     const params = useParams();
     const session = useChatStore(state => state.session);
     const pushEnabled = useChatStore(state => state.pushEnabled);
+    const pushError = useChatStore(state => state.pushError);
+    const avatar = useChatStore(state => state.users.find(user => user.user_id === state.session?.id)?.avatar);
     const select = useChatStore(state => state.select);
+    const [profileOpen, setProfileOpen] = useState(false);
+    // Permission de notification accordée : les notifications fonctionnent au moins quand un onglet est ouvert
+    const [permission, setPermission] = useState(() => "Notification" in window ? window.Notification.permission : "denied");
 
     const conversation = useMemo(() => parseConversation(params.type, params.id), [params.type, params.id]);
 
@@ -52,46 +54,16 @@ export function MessagesPage() {
         fetchRooms().then(setRooms).catch(console.error);
     }, []);
 
-    // Notifications push
+    // Notifications push : la permission n'est demandée qu'au clic sur la cloche
     useEffect(() => {
         if (!session) {
             return;
         }
-        startPush(session).then(enabled => useChatStore.getState().setPushEnabled(enabled));
+        startPush(session, false).then(result => useChatStore.getState().setPushEnabled(result.enabled, result.error));
     }, [session]);
 
-    // Ecoute du service worker : rafraîchit la conversation affichée ou incrémente les non-lus
-    useEffect(() => {
-        const sw = navigator.serviceWorker;
-        if (!sw) {
-            return;
-        }
-        const onMessage = (event: MessageEvent<PushData>) => {
-            const data = event.data;
-            console.log("Got event from sw : " + JSON.stringify(data));
-            const target = parseConversation(data?.type, data?.conversationId);
-            if (!target) {
-                return;
-            }
-            const state = useChatStore.getState();
-            const key = conversationKey(target);
-            if (state.selected && conversationKey(state.selected) === key && document.visibilityState === "visible") {
-                fetchMessages(target).then(messages => state.setMessages(key, messages)).catch(console.error);
-            } else {
-                state.incrementUnread(key);
-                // Message d'un utilisateur inscrit depuis le chargement de la liste
-                if (target.type === "user" && !state.users.some(user => user.user_id === target.id)) {
-                    fetchUsers().then(state.setUsers).catch(console.error);
-                }
-                // Recharge la conversation en cache pour l'afficher à jour lors de sa sélection
-                if (state.messages[key]) {
-                    fetchMessages(target).then(messages => state.setMessages(key, messages)).catch(console.error);
-                }
-            }
-        };
-        sw.addEventListener("message", onMessage);
-        return () => sw.removeEventListener("message", onMessage);
-    }, []);
+    // Présence, nouveaux messages, réactions et notifications quand l'onglet est ouvert
+    useSync();
 
     const enablePush = async () => {
         if (!session) {
@@ -101,7 +73,15 @@ export function MessagesPage() {
             alert("Les notifications sont bloquées pour ce site : autorisez-les dans les paramètres du navigateur (icône à gauche de l'adresse), puis rechargez la page.");
             return;
         }
-        useChatStore.getState().setPushEnabled(await startPush(session));
+        const result = await startPush(session, true);
+        setPermission("Notification" in window ? window.Notification.permission : "denied");
+        useChatStore.getState().setPushEnabled(result.enabled, result.error);
+    };
+
+    const leave = async () => {
+        await stopPush();
+        useChatStore.getState().clearSession();
+        navigate("/login", {replace: true});
     };
 
     const logout = async () => {
@@ -110,10 +90,15 @@ export function MessagesPage() {
         } catch (error) {
             console.error(error);
         }
-        await stopPush();
-        useChatStore.getState().clearSession();
-        navigate("/login", {replace: true});
+        await leave();
     };
+
+    const notificationsOn = permission === "granted";
+    const notificationTitle = pushEnabled
+        ? "Notifications activées"
+        : notificationsOn
+            ? "Notifications actives tant qu'un onglet est ouvert" + (pushError ? " (push indisponible : " + pushError + ")" : "")
+            : "Activer les notifications";
 
     return (
         <Box sx={{height: "100vh", display: "flex", flexDirection: "column", bgcolor: "background.default"}}>
@@ -121,16 +106,19 @@ export function MessagesPage() {
                 <Toolbar variant="dense" sx={{gap: 1}}>
                     <ForumIcon/>
                     <Typography variant="h6" sx={{flex: 1}} noWrap>UBO Relay Chat</Typography>
-                    <Tooltip title={pushEnabled ? "Notifications activées" : "Activer les notifications"}>
-                        {/* Le clic fournit le geste utilisateur exigé par certains navigateurs pour demander l'autorisation */}
+                    <Tooltip title={notificationTitle}>
+                        {/* Le clic fournit le geste utilisateur exigé par les navigateurs pour demander l'autorisation */}
                         <IconButton color="inherit" onClick={enablePush} aria-label="Notifications">
-                            {pushEnabled ? <NotificationsActiveIcon/> : <NotificationsOffIcon sx={{opacity: 0.7}}/>}
+                            {notificationsOn ? <NotificationsActiveIcon sx={{opacity: pushEnabled ? 1 : 0.85}}/> : <NotificationsOffIcon sx={{opacity: 0.7}}/>}
                         </IconButton>
                     </Tooltip>
-                    <Avatar sx={{width: 30, height: 30, fontSize: 14, bgcolor: colorFromName(session?.username || "?")}}>
-                        {(session?.username || "?").charAt(0).toUpperCase()}
-                    </Avatar>
-                    <Typography sx={{display: {xs: "none", sm: "block"}}}>{session?.username}</Typography>
+                    <Tooltip title="Mon profil">
+                        <ButtonBase onClick={() => setProfileOpen(true)} aria-label="Mon profil"
+                                    sx={{borderRadius: 5, gap: 1, px: 0.5, py: 0.25}}>
+                            <UserAvatar username={session?.username || "?"} avatar={avatar} size={30}/>
+                            <Typography sx={{display: {xs: "none", sm: "block"}}}>{session?.username}</Typography>
+                        </ButtonBase>
+                    </Tooltip>
                     <Tooltip title="Déconnexion">
                         <IconButton color="inherit" onClick={logout} aria-label="Déconnexion"><LogoutIcon/></IconButton>
                     </Tooltip>
@@ -161,6 +149,7 @@ export function MessagesPage() {
                         )}
                 </Paper>
             </Box>
+            <ProfileDialog open={profileOpen} onClose={() => setProfileOpen(false)} onDeleted={leave}/>
         </Box>
     );
 }

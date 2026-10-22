@@ -16,6 +16,7 @@ export interface User {
 export interface PublicUser {
     user_id: number;
     username: string;
+    avatar: string | null;
     last_login: string | null;
 }
 
@@ -32,6 +33,30 @@ export interface Message {
     content: string;
     image: string | null;
     timestamp: number;
+    /** Réactions : emoji -> identifiants des utilisateurs */
+    reactions?: Reactions;
+}
+
+export type Reactions = Record<string, number[]>;
+
+export const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
+/** Dernier message reçu dans une conversation (boîte de réception côté serveur) */
+export interface InboxEntry {
+    id: string;
+    senderId: number;
+    title: string;
+    body: string;
+    timestamp: number;
+}
+
+/** Réponse du heartbeat /api/presence */
+export interface SyncState {
+    online: number[];
+    lastSeen: Record<number, number>;
+    /** Clé de conversation ("user:3", "room:1") -> dernière modification et dernier message reçu */
+    activity: Record<string, { rev: number, last?: InboxEntry }>;
+    usersRev: number;
 }
 
 export type ConversationType = "user" | "room";

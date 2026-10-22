@@ -21,3 +21,6 @@ insert into users (username, password, email, created_on, external_id) values ('
 insert into rooms (name, created_on, created_by) values ('General', now(), 1);
 insert into rooms (name, created_on, created_by) values ('News', now(), 1);
 insert into rooms (name, created_on, created_by) values ('Random', now(), 1);
+
+-- Photo de profil (chemin dans le store Vercel Blob)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR ( 255 );

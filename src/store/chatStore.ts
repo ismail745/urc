@@ -1,5 +1,5 @@
 import {create} from "zustand";
-import type {Conversation, Message, PublicUser, Room, Session} from "../model/common";
+import type {Conversation, Message, PublicUser, Reactions, Room, Session} from "../model/common";
 import {conversationKey} from "../model/common";
 
 const SESSION_KEY = "session";
@@ -22,8 +22,14 @@ interface ChatState {
     /** Nombre de messages non lus par clé de conversation */
     unread: Record<string, number>;
     selected: Conversation | null;
-    /** true si les notifications push sont actives (sinon on rafraîchit périodiquement) */
+    /** true si les notifications push (Pusher Beams) sont actives */
     pushEnabled: boolean;
+    /** Raison pour laquelle les notifications push n'ont pas pu être activées */
+    pushError: string | null;
+    /** Identifiants des utilisateurs en ligne */
+    online: number[];
+    /** Date de dernière activité (ms) par utilisateur */
+    lastSeen: Record<number, number>;
 
     setSession: (session: Session) => void;
     clearSession: () => void;
@@ -34,7 +40,10 @@ interface ChatState {
     addMessage: (key: string, message: Message) => void;
     select: (conversation: Conversation | null) => void;
     incrementUnread: (key: string) => void;
-    setPushEnabled: (enabled: boolean) => void;
+    setPushEnabled: (enabled: boolean, error?: string | null) => void;
+    setPresence: (online: number[], lastSeen: Record<number, number>) => void;
+    setReactions: (key: string, messageId: string, reactions: Reactions) => void;
+    setAvatar: (userId: number, avatar: string | null) => void;
 }
 
 export const useChatStore = create<ChatState>()((set) => ({
@@ -45,6 +54,9 @@ export const useChatStore = create<ChatState>()((set) => ({
     unread: {},
     selected: null,
     pushEnabled: false,
+    pushError: null,
+    online: [],
+    lastSeen: {},
 
     setSession: (session) => {
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -52,7 +64,7 @@ export const useChatStore = create<ChatState>()((set) => ({
     },
     clearSession: () => {
         sessionStorage.removeItem(SESSION_KEY);
-        set({session: null, users: [], rooms: [], messages: {}, unread: {}, selected: null, pushEnabled: false});
+        set({session: null, users: [], rooms: [], messages: {}, unread: {}, selected: null, pushEnabled: false, pushError: null, online: [], lastSeen: {}});
     },
     setUsers: (users) => set({users}),
     setRooms: (rooms) => set({rooms}),
@@ -79,5 +91,15 @@ export const useChatStore = create<ChatState>()((set) => ({
     incrementUnread: (key) => set((state) => ({
         unread: {...state.unread, [key]: (state.unread[key] || 0) + 1},
     })),
-    setPushEnabled: (pushEnabled) => set({pushEnabled}),
+    setPushEnabled: (pushEnabled, pushError = null) => set({pushEnabled, pushError}),
+    setPresence: (online, lastSeen) => set({online, lastSeen}),
+    setReactions: (key, messageId, reactions) => set((state) => ({
+        messages: {
+            ...state.messages,
+            [key]: (state.messages[key] || []).map(m => m.id === messageId ? {...m, reactions} : m),
+        },
+    })),
+    setAvatar: (userId, avatar) => set((state) => ({
+        users: state.users.map(user => user.user_id === userId ? {...user, avatar} : user),
+    })),
 }));

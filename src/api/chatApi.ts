@@ -1,5 +1,5 @@
 import {apiFetch, apiFetchBlob} from "./http";
-import type {Conversation, Message, PublicUser, Room} from "../model/common";
+import type {Conversation, Message, PublicUser, Reactions, Room, SyncState} from "../model/common";
 
 export function fetchUsers() {
     return apiFetch<PublicUser[]>("/api/users");
@@ -35,4 +35,23 @@ export function uploadImage(file: File) {
 
 export function fetchImage(path: string) {
     return apiFetchBlob("/api/image?path=" + encodeURIComponent(path));
+}
+
+export function sendReaction(conversation: Conversation, messageId: string, emoji: string | null) {
+    return apiFetch<Reactions>("/api/reaction", {
+        method: "POST",
+        body: JSON.stringify({type: conversation.type, targetId: conversation.id, messageId, emoji}),
+    });
+}
+
+export function sync(active: boolean) {
+    return apiFetch<SyncState>("/api/presence", {method: "POST", body: JSON.stringify({active})});
+}
+
+export function updateAvatar(avatar: string | null) {
+    return apiFetch<{ avatar: string | null }>("/api/profile", {method: "PUT", body: JSON.stringify({avatar})});
+}
+
+export function deleteAccount(password: string) {
+    return apiFetch<{ ok: boolean }>("/api/profile", {method: "DELETE", body: JSON.stringify({password})});
 }

@@ -8,7 +8,7 @@ import TagIcon from "@mui/icons-material/Tag";
 import {useChatStore} from "../store/chatStore";
 import {conversationKey} from "../model/common";
 import type {Conversation} from "../model/common";
-import {colorFromName} from "../theme";
+import {presenceLabel, UserAvatar} from "./UserAvatar";
 import {NewRoomDialog} from "./NewRoomDialog";
 
 /** Liste des salons et des utilisateurs auxquels envoyer des messages */
@@ -19,6 +19,8 @@ export function ConversationList() {
     const rooms = useChatStore(state => state.rooms);
     const unread = useChatStore(state => state.unread);
     const selected = useChatStore(state => state.selected);
+    const online = useChatStore(state => state.online);
+    const lastSeen = useChatStore(state => state.lastSeen);
     const [dialogOpen, setDialogOpen] = useState(false);
 
     const isSelected = (conversation: Conversation) =>
@@ -53,16 +55,16 @@ export function ConversationList() {
                 <ListSubheader>Utilisateurs</ListSubheader>
                 {users.filter(user => user.user_id !== session?.id).map(user => {
                     const conversation: Conversation = {type: "user", id: user.user_id};
+                    const isOnline = online.includes(user.user_id);
                     return (
                         <ListItemButton key={"user" + user.user_id} selected={isSelected(conversation)}
                                         onClick={() => navigate(`/messages/user/${user.user_id}`)}>
                             <ListItemAvatar>
-                                <Avatar sx={{bgcolor: colorFromName(user.username)}}>
-                                    {user.username.charAt(0).toUpperCase()}
-                                </Avatar>
+                                <UserAvatar username={user.username} avatar={user.avatar} online={isOnline}/>
                             </ListItemAvatar>
                             <ListItemText primary={user.username}
-                                          secondary={user.last_login ? "Vu le " + user.last_login : "Jamais connecté"}/>
+                                          secondary={presenceLabel(isOnline, lastSeen[user.user_id], user.last_login)}
+                                          slotProps={{secondary: {sx: isOnline ? {color: "success.main"} : undefined}}}/>
                             <Badge badgeContent={unreadCount(conversation)} color="error" sx={{mr: 1}}/>
                         </ListItemButton>
                     );

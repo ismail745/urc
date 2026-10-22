@@ -2,6 +2,7 @@ import { db } from '@vercel/postgres';
 import { Redis } from '@upstash/redis';
 import {arrayBufferToBase64, stringToArrayBuffer} from "../lib/base64";
 import {jsonResponse} from "../lib/session";
+import {USERS_REV_KEY} from "../lib/conversation";
 
 export const config = {
     runtime: 'edge',
@@ -49,6 +50,7 @@ export default async function handler(request) {
             const userInfo = {};
             userInfo[user.id] = user;
             await redis.hset("users", userInfo);
+            await redis.incr(USERS_REV_KEY);
 
             return jsonResponse({token: token, username: username, externalId: externalId, id: user.id});
         } finally {
