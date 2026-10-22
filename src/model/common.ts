@@ -24,6 +24,8 @@ export interface Room {
     room_id: number;
     name: string;
     created_on: string;
+    /** Identifiant du créateur, seul autorisé à supprimer le salon */
+    created_by: number;
 }
 
 export interface Message {
@@ -60,6 +62,7 @@ export interface SyncState {
     /** Clé de conversation ("user:3", "room:1") -> dernière modification et dernier message reçu */
     activity: Record<string, { rev: number, last?: InboxEntry }>;
     usersRev: number;
+    roomsRev: number;
     incomingCall: IncomingCall | null;
 }
 

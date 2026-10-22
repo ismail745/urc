@@ -2,6 +2,7 @@ import {useCallback, useEffect, useState} from "react";
 import {Alert, Avatar, Box, CircularProgress, IconButton, Toolbar, Tooltip, Typography} from "@mui/material";
 import CallIcon from "@mui/icons-material/Call";
 import VideocamIcon from "@mui/icons-material/Videocam";
+import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TagIcon from "@mui/icons-material/Tag";
 import {useNavigate} from "react-router-dom";
@@ -14,6 +15,7 @@ import {presenceLabel, UserAvatar} from "./UserAvatar";
 import {call} from "../call/callManager";
 import {MessageList} from "./MessageList";
 import {MessageInput} from "./MessageInput";
+import {DeleteRoomDialog} from "./DeleteRoomDialog";
 
 const EMPTY: Message[] = [];
 
@@ -35,6 +37,7 @@ export function ConversationView({conversation}: { conversation: Conversation })
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [deleteOpen, setDeleteOpen] = useState(false);
 
     const load = useCallback(() => {
         return fetchMessages(conversation)
@@ -86,7 +89,15 @@ export function ConversationView({conversation}: { conversation: Conversation })
                         </Tooltip>
                     </Box>
                 )}
+                {room && session?.id !== undefined && Number(room.created_by) === session.id && (
+                    <Tooltip title="Supprimer le salon">
+                        <IconButton onClick={() => setDeleteOpen(true)} aria-label="Supprimer le salon" sx={{ml: "auto"}}>
+                            <DeleteIcon/>
+                        </IconButton>
+                    </Tooltip>
+                )}
             </Toolbar>
+            {room && <DeleteRoomDialog room={room} open={deleteOpen} onClose={() => setDeleteOpen(false)}/>}
             {error && <Alert severity="error" sx={{m: 1}}>{error}</Alert>}
             {loading && messages.length === 0
                 ? <Box sx={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center"}}><CircularProgress/></Box>

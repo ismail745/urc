@@ -1,6 +1,6 @@
 import {useEffect} from "react";
 import {useNavigate} from "react-router-dom";
-import {fetchMessages, fetchUsers, sync} from "../api/chatApi";
+import {fetchMessages, fetchRooms, fetchUsers, sync} from "../api/chatApi";
 import {useChatStore} from "../store/chatStore";
 import {conversationKey} from "../model/common";
 import type {Conversation, InboxEntry, SyncState} from "../model/common";
@@ -70,6 +70,7 @@ export function useSync() {
         }
         let known: SyncState["activity"] | null = null;
         let usersRev: number | null = null;
+        let roomsRev: number | null = null;
         // Messages déjà notifiés par le push : pas de seconde notification
         const notified = new Set<string>();
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -86,6 +87,20 @@ export function useSync() {
                 fetchUsers().then(state.setUsers).catch(console.error);
             }
             usersRev = result.usersRev;
+
+            // Salon créé ou supprimé par un autre utilisateur
+            if (roomsRev !== null && result.roomsRev !== roomsRev) {
+                fetchRooms().then(rooms => {
+                    const current = useChatStore.getState();
+                    current.rooms.filter(room => !rooms.some(r => r.room_id === room.room_id))
+                        .forEach(room => current.removeRoom(room.room_id));
+                    current.setRooms(rooms);
+                    if (current.selected?.type === "room" && !rooms.some(room => room.room_id === current.selected?.id)) {
+                        navigate("/messages", {replace: true});
+                    }
+                }).catch(console.error);
+            }
+            roomsRev = result.roomsRev;
 
             const previous = known;
             known = result.activity;

@@ -13,6 +13,10 @@ export function createRoom(name: string) {
     return apiFetch<Room>("/api/rooms", {method: "POST", body: JSON.stringify({name})});
 }
 
+export function deleteRoom(roomId: number) {
+    return apiFetch<{ ok: boolean }>("/api/room?id=" + roomId, {method: "DELETE"});
+}
+
 export function fetchMessages(conversation: Conversation) {
     return apiFetch<Message[]>(`/api/messages?type=${conversation.type}&id=${conversation.id}`);
 }

@@ -36,6 +36,7 @@ interface ChatState {
     setUsers: (users: PublicUser[]) => void;
     setRooms: (rooms: Room[]) => void;
     addRoom: (room: Room) => void;
+    removeRoom: (roomId: number) => void;
     setMessages: (key: string, messages: Message[]) => void;
     addMessage: (key: string, message: Message) => void;
     select: (conversation: Conversation | null) => void;
@@ -71,6 +72,14 @@ export const useChatStore = create<ChatState>()((set) => ({
     addRoom: (room) => set((state) => ({
         rooms: [...state.rooms, room].sort((a, b) => a.name.localeCompare(b.name)),
     })),
+    removeRoom: (roomId) => set((state) => {
+        const key = "room:" + roomId;
+        const messages = {...state.messages};
+        const unread = {...state.unread};
+        delete messages[key];
+        delete unread[key];
+        return {rooms: state.rooms.filter(room => room.room_id !== roomId), messages, unread};
+    }),
     setMessages: (key, messages) => set((state) => ({messages: {...state.messages, [key]: messages}})),
     addMessage: (key, message) => set((state) => {
         const current = state.messages[key] || [];

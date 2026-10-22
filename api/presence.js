@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 import {getConnecterUser, jsonResponse, unauthorizedResponse} from "../lib/session";
-import {ONLINE_WINDOW, PRESENCE_KEY, USERS_REV_KEY} from "../lib/conversation";
+import {ONLINE_WINDOW, PRESENCE_KEY, ROOMS_REV_KEY, USERS_REV_KEY} from "../lib/conversation";
 
 export const config = {
     runtime: 'edge',
@@ -16,7 +16,7 @@ const redis = Redis.fromEnv();
  * - online : identifiants des utilisateurs en ligne
  * - lastSeen : date de dernière activité par utilisateur
  * - activity : pour chaque conversation, date de dernière modification et dernier message reçu
- * - usersRev : version de la liste des utilisateurs
+ * - usersRev / roomsRev : version de la liste des utilisateurs / des salons
  * - incomingCall : appel entrant en train de sonner, ou null
  */
 export default async function handler(request) {
@@ -40,8 +40,9 @@ export default async function handler(request) {
         pipeline.hgetall("rev:rooms");
         pipeline.get(USERS_REV_KEY);
         pipeline.get("calls:user:" + user.id);
+        pipeline.get(ROOMS_REV_KEY);
         const results = await pipeline.exec();
-        const [presence, inbox, roomsInbox, rev, roomsRev, usersRev, callId] = active ? results.slice(1) : results;
+        const [presence, inbox, roomsInbox, rev, roomsRev, usersRev, callId, roomsListRev] = active ? results.slice(1) : results;
 
         let incomingCall = null;
         if (callId) {
@@ -70,7 +71,7 @@ export default async function handler(request) {
             activity[key] = {rev: Math.max(activity[key]?.rev || 0, last.timestamp), last};
         });
 
-        return jsonResponse({online, lastSeen, activity, usersRev: Number(usersRev || 0), incomingCall});
+        return jsonResponse({online, lastSeen, activity, usersRev: Number(usersRev || 0), roomsRev: Number(roomsListRev || 0), incomingCall});
     } catch (error) {
         console.log(error);
         return jsonResponse({code: "SERVER_ERROR", message: "Erreur lors de la synchronisation"}, 500);
