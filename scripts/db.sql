@@ -24,3 +24,7 @@ insert into rooms (name, created_on, created_by) values ('Random', now(), 1);
 
 -- Photo de profil (chemin dans le store Vercel Blob)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR ( 255 );
+
+-- Administrateurs : peuvent supprimer tous les utilisateurs et tous les salons
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false;
+UPDATE users SET is_admin = true WHERE username = 'test';

@@ -83,6 +83,8 @@ export function MessageList({messages, conversation, currentUserId}: MessageList
         <Box sx={{flex: 1, overflowY: "auto", p: 2, display: "flex", flexDirection: "column", gap: 1.5}}>
             {messages.map(message => {
                 const mine = message.senderId === currentUserId;
+                // Nom actuel de l'émetteur (il a pu le modifier depuis l'envoi du message)
+                const senderName = users.find(user => user.user_id === message.senderId)?.username ?? message.senderName;
                 const reactions = Object.entries(message.reactions || {}).filter(([, ids]) => ids.length > 0);
                 return (
                     <Box key={message.id} sx={{
@@ -95,12 +97,12 @@ export function MessageList({messages, conversation, currentUserId}: MessageList
                         "&:hover .reaction-button, & .reaction-button:focus-visible": {opacity: 1},
                     }}>
                         {!mine && (
-                            <UserAvatar username={message.senderName} size={32}
+                            <UserAvatar username={senderName} size={32}
                                         avatar={users.find(user => user.user_id === message.senderId)?.avatar}/>
                         )}
                         <Box sx={{maxWidth: "70%", display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start"}}>
                             <Typography variant="caption" color="text.secondary" sx={{px: 1}}>
-                                {mine ? "Moi" : message.senderName} · {dateFormat.format(new Date(message.timestamp))}
+                                {mine ? "Moi" : senderName} · {dateFormat.format(new Date(message.timestamp))}
                             </Typography>
                             <Paper elevation={0} sx={{
                                 px: 1.5, py: 1,

@@ -67,6 +67,18 @@ export function updateAvatar(avatar: string | null) {
     return apiFetch<{ avatar: string | null }>("/api/profile", {method: "PUT", body: JSON.stringify({avatar})});
 }
 
+export function updateCredentials(currentPassword: string, username: string, newPassword?: string) {
+    return apiFetch<{ username: string }>("/api/profile", {
+        method: "PATCH",
+        body: JSON.stringify({currentPassword, username, newPassword: newPassword || undefined}),
+    });
+}
+
+/** Suppression d'un utilisateur par un administrateur */
+export function deleteUser(userId: number) {
+    return apiFetch<{ ok: boolean }>("/api/profile?id=" + userId, {method: "DELETE"});
+}
+
 export function deleteAccount(password: string) {
     return apiFetch<{ ok: boolean }>("/api/profile", {method: "DELETE", body: JSON.stringify({password})});
 }

@@ -16,6 +16,7 @@ export default async function handler(request) {
             if (user) {
                 // Passe immédiatement l'utilisateur hors ligne, en conservant sa date de dernière connexion
                 await redis.zadd(PRESENCE_KEY, {score: Date.now() - ONLINE_WINDOW, member: String(user.id)});
+                await redis.srem("sessions:" + user.id, token);
             }
             await redis.del(token);
         }

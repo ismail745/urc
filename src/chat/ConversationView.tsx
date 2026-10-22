@@ -3,6 +3,7 @@ import {Alert, Avatar, Box, CircularProgress, IconButton, Toolbar, Tooltip, Typo
 import CallIcon from "@mui/icons-material/Call";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import DeleteIcon from "@mui/icons-material/Delete";
+import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TagIcon from "@mui/icons-material/Tag";
 import {useNavigate} from "react-router-dom";
@@ -16,6 +17,7 @@ import {call} from "../call/callManager";
 import {MessageList} from "./MessageList";
 import {MessageInput} from "./MessageInput";
 import {DeleteRoomDialog} from "./DeleteRoomDialog";
+import {DeleteUserDialog} from "./DeleteUserDialog";
 
 const EMPTY: Message[] = [];
 
@@ -34,6 +36,7 @@ export function ConversationView({conversation}: { conversation: Conversation })
     const isOnline = useChatStore(state => conversation.type === "user" && state.online.includes(conversation.id));
     const lastSeen = useChatStore(state => state.lastSeen[conversation.id]);
     const name = room?.name ?? user?.username;
+    const isAdmin = useChatStore(state => !!state.users.find(u => u.user_id === state.session?.id)?.is_admin);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -87,10 +90,17 @@ export function ConversationView({conversation}: { conversation: Conversation })
                                 <CallIcon/>
                             </IconButton>
                         </Tooltip>
+                        {isAdmin && !user.is_admin && (
+                            <Tooltip title="Supprimer l'utilisateur (admin)">
+                                <IconButton onClick={() => setDeleteOpen(true)} aria-label="Supprimer l'utilisateur" color="error">
+                                    <PersonRemoveIcon/>
+                                </IconButton>
+                            </Tooltip>
+                        )}
                     </Box>
                 )}
-                {room && session?.id !== undefined && Number(room.created_by) === session.id && (
-                    <Tooltip title="Supprimer le salon">
+                {room && session?.id !== undefined && (Number(room.created_by) === session.id || isAdmin) && (
+                    <Tooltip title={Number(room.created_by) === session.id ? "Supprimer le salon" : "Supprimer le salon (admin)"}>
                         <IconButton onClick={() => setDeleteOpen(true)} aria-label="Supprimer le salon" sx={{ml: "auto"}}>
                             <DeleteIcon/>
                         </IconButton>
@@ -98,6 +108,7 @@ export function ConversationView({conversation}: { conversation: Conversation })
                 )}
             </Toolbar>
             {room && <DeleteRoomDialog room={room} open={deleteOpen} onClose={() => setDeleteOpen(false)}/>}
+            {user && <DeleteUserDialog user={user} open={deleteOpen} onClose={() => setDeleteOpen(false)}/>}
             {error && <Alert severity="error" sx={{m: 1}}>{error}</Alert>}
             {loading && messages.length === 0
                 ? <Box sx={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center"}}><CircularProgress/></Box>

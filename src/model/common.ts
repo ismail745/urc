@@ -17,6 +17,8 @@ export interface PublicUser {
     user_id: number;
     username: string;
     avatar: string | null;
+    /** Administrateur : peut supprimer tous les utilisateurs et tous les salons */
+    is_admin: boolean;
     last_login: string | null;
 }
 

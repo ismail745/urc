@@ -8,7 +8,7 @@ const redis = Redis.fromEnv();
 const sql = neon(process.env.POSTGRES_URL);
 
 /**
- * Suppression d'un salon par son créateur : DELETE /api/room?id=xxx
+ * Suppression d'un salon par son créateur ou par un administrateur : DELETE /api/room?id=xxx
  * Les messages du salon, leurs réactions et leurs fichiers (images, messages vocaux) sont supprimés.
  */
 export async function DELETE(request) {
@@ -27,7 +27,10 @@ export async function DELETE(request) {
             return jsonResponse({code: "NOT_FOUND", message: "Salon introuvable"}, 404);
         }
         if (Number(rooms[0].created_by) !== Number(user.id)) {
-            return jsonResponse({code: "FORBIDDEN", message: "Seul le créateur du salon peut le supprimer"}, 403);
+            const admins = await sql`select 1 from users where user_id = ${user.id} and is_admin`;
+            if (admins.length === 0) {
+                return jsonResponse({code: "FORBIDDEN", message: "Seul le créateur du salon peut le supprimer"}, 403);
+            }
         }
 
         const key = conversationKey("room", user.id, roomId);

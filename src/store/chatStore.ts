@@ -45,6 +45,7 @@ interface ChatState {
     setPresence: (online: number[], lastSeen: Record<number, number>) => void;
     setReactions: (key: string, messageId: string, reactions: Reactions) => void;
     setAvatar: (userId: number, avatar: string | null) => void;
+    setUsername: (username: string) => void;
 }
 
 export const useChatStore = create<ChatState>()((set) => ({
@@ -108,6 +109,17 @@ export const useChatStore = create<ChatState>()((set) => ({
             [key]: (state.messages[key] || []).map(m => m.id === messageId ? {...m, reactions} : m),
         },
     })),
+    setUsername: (username) => set((state) => {
+        if (!state.session) {
+            return {};
+        }
+        const session = {...state.session, username};
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+        return {
+            session,
+            users: state.users.map(user => user.user_id === session.id ? {...user, username} : user),
+        };
+    }),
     setAvatar: (userId, avatar) => set((state) => ({
         users: state.users.map(user => user.user_id === userId ? {...user, avatar} : user),
     })),

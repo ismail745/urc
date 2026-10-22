@@ -1,11 +1,12 @@
 import {useRef, useState} from "react";
 import type {ChangeEvent, FormEvent} from "react";
 import {
-    Alert, Box, Button, Collapse, Dialog, DialogActions, DialogContent, DialogTitle, Divider, TextField, Typography
+    Alert, Box, Button, Chip, Collapse, Dialog, DialogActions, DialogContent, DialogTitle, Divider, TextField, Typography
 } from "@mui/material";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import EditIcon from "@mui/icons-material/Edit";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
-import {deleteAccount, updateAvatar, uploadImage} from "../api/chatApi";
+import {deleteAccount, updateAvatar, updateCredentials, uploadImage} from "../api/chatApi";
 import {useChatStore} from "../store/chatStore";
 import type {CustomError} from "../model/CustomError";
 import {UserAvatar} from "../chat/UserAvatar";
@@ -19,10 +20,17 @@ interface ProfileDialogProps {
     onDeleted: () => void;
 }
 
-/** Profil de l'utilisateur connecté : photo de profil et suppression du compte */
+/** Profil de l'utilisateur connecté : photo, nom, mot de passe et suppression du compte */
 export function ProfileDialog({open, onClose, onDeleted}: ProfileDialogProps) {
     const session = useChatStore(state => state.session);
     const avatar = useChatStore(state => state.users.find(user => user.user_id === state.session?.id)?.avatar);
+    const isAdmin = useChatStore(state => !!state.users.find(user => user.user_id === state.session?.id)?.is_admin);
+    const [editing, setEditing] = useState(false);
+    const [username, setUsername] = useState("");
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [success, setSuccess] = useState<string | null>(null);
     const fileInput = useRef<HTMLInputElement>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -30,7 +38,43 @@ export function ProfileDialog({open, onClose, onDeleted}: ProfileDialogProps) {
     const [password, setPassword] = useState("");
     const [deleting, setDeleting] = useState(false);
 
+    const resetEdit = () => {
+        setEditing(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+    };
+
+    const startEdit = () => {
+        setUsername(session?.username || "");
+        setSuccess(null);
+        setError(null);
+        setEditing(true);
+    };
+
+    const handleCredentials = async (event: FormEvent) => {
+        event.preventDefault();
+        if (newPassword && newPassword !== confirmPassword) {
+            setError("Les deux nouveaux mots de passe sont différents");
+            return;
+        }
+        setSaving(true);
+        setError(null);
+        try {
+            const result = await updateCredentials(currentPassword, username.trim(), newPassword);
+            useChatStore.getState().setUsername(result.username);
+            setSuccess(newPassword ? "Profil et mot de passe mis à jour" : "Profil mis à jour");
+            resetEdit();
+        } catch (e) {
+            setError((e as CustomError).message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const close = () => {
+        resetEdit();
+        setSuccess(null);
         setError(null);
         setConfirmDelete(false);
         setPassword("");
@@ -90,7 +134,10 @@ export function ProfileDialog({open, onClose, onDeleted}: ProfileDialogProps) {
             <DialogContent>
                 <Box sx={{display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5, py: 1}}>
                     <UserAvatar username={session?.username || "?"} avatar={avatar} size={112}/>
-                    <Typography variant="h6">{session?.username}</Typography>
+                    <Box sx={{display: "flex", alignItems: "center", gap: 1}}>
+                        <Typography variant="h6">{session?.username}</Typography>
+                        {isAdmin && <Chip size="small" color="secondary" label="Admin"/>}
+                    </Box>
                     <input ref={fileInput} type="file" accept="image/*" hidden onChange={handleFile}/>
                     <Box sx={{display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "center"}}>
                         <Button variant="contained" startIcon={<PhotoCameraIcon/>} loading={saving}
@@ -106,6 +153,41 @@ export function ProfileDialog({open, onClose, onDeleted}: ProfileDialogProps) {
                 </Box>
 
                 {error && <Alert severity="error" sx={{mt: 2}} onClose={() => setError(null)}>{error}</Alert>}
+                {success && <Alert severity="success" sx={{mt: 2}} onClose={() => setSuccess(null)}>{success}</Alert>}
+
+                <Divider sx={{my: 2}}/>
+                <Typography variant="subtitle2">Identifiants</Typography>
+                <Collapse in={!editing}>
+                    <Button startIcon={<EditIcon/>} onClick={startEdit} sx={{mt: 1}}>
+                        Modifier le nom ou le mot de passe
+                    </Button>
+                </Collapse>
+                <Collapse in={editing}>
+                    <Box component="form" onSubmit={handleCredentials} sx={{mt: 1}}>
+                        <TextField fullWidth size="small" label="Nom d'utilisateur" margin="dense" required
+                                   autoComplete="username" value={username} onChange={e => setUsername(e.target.value)}
+                                   slotProps={{htmlInput: {maxLength: 50}}}/>
+                        <TextField fullWidth size="small" type="password" label="Nouveau mot de passe (facultatif)"
+                                   margin="dense" autoComplete="new-password" value={newPassword}
+                                   onChange={e => setNewPassword(e.target.value)} helperText="6 caractères minimum"/>
+                        {newPassword && (
+                            <TextField fullWidth size="small" type="password" label="Confirmer le nouveau mot de passe"
+                                       margin="dense" autoComplete="new-password" value={confirmPassword}
+                                       onChange={e => setConfirmPassword(e.target.value)}
+                                       error={!!confirmPassword && confirmPassword !== newPassword}/>
+                        )}
+                        <TextField fullWidth size="small" type="password" label="Mot de passe actuel" margin="dense"
+                                   required autoComplete="current-password" value={currentPassword}
+                                   onChange={e => setCurrentPassword(e.target.value)}/>
+                        <Box sx={{display: "flex", justifyContent: "flex-end", gap: 1, mt: 1}}>
+                            <Button onClick={resetEdit}>Annuler</Button>
+                            <Button type="submit" variant="contained" loading={saving}
+                                    disabled={!currentPassword || !username.trim()}>
+                                Enregistrer
+                            </Button>
+                        </Box>
+                    </Box>
+                </Collapse>
 
                 <Divider sx={{my: 2}}/>
                 <Typography variant="subtitle2" color="error">Zone de danger</Typography>

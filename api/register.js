@@ -1,7 +1,7 @@
 import { db } from '@vercel/postgres';
 import { Redis } from '@upstash/redis';
 import {arrayBufferToBase64, stringToArrayBuffer} from "../lib/base64";
-import {jsonResponse} from "../lib/session";
+import {jsonResponse, SESSION_TTL, trackSession} from "../lib/session";
 import {USERS_REV_KEY} from "../lib/conversation";
 
 export const config = {
@@ -46,7 +46,8 @@ export default async function handler(request) {
             // Connexion automatique : même logique que le service login
             const token = crypto.randomUUID().toString();
             const user = {id: rows[0].user_id, username: username, email: email, externalId: externalId};
-            await redis.set(token, user, { ex: 3600 });
+            await redis.set(token, user, { ex: SESSION_TTL });
+            await trackSession(redis, user.id, token);
             const userInfo = {};
             userInfo[user.id] = user;
             await redis.hset("users", userInfo);

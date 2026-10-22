@@ -62,7 +62,7 @@ export function ConversationList() {
                             <ListItemAvatar>
                                 <UserAvatar username={user.username} avatar={user.avatar} online={isOnline}/>
                             </ListItemAvatar>
-                            <ListItemText primary={user.username}
+                            <ListItemText primary={user.is_admin ? user.username + " · admin" : user.username}
                                           secondary={presenceLabel(isOnline, lastSeen[user.user_id], user.last_login)}
                                           slotProps={{secondary: {sx: isOnline ? {color: "success.main"} : undefined}}}/>
                             <Badge badgeContent={unreadCount(conversation)} color="error" sx={{mr: 1}}/>
